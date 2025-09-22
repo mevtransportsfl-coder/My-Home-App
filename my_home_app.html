@@ -56,7 +56,6 @@
 
     <script src="https://apis.google.com/js/api.js"></script>
     <script>
-        // Make sure to replace this with your actual client ID, in quotes.
         const CLIENT_ID = '157874326568-0qjpn24jsk7n1t9t1kfhhc8s3p9r256d.apps.googleusercontent.com';
 
         const toggleButton = document.getElementById('toggleLight');
@@ -65,12 +64,10 @@
 
         function handleAuthResult(authResult) {
             if (authResult && !authResult.error) {
-                // User is authenticated, show the control button and hide the sign-in button
                 toggleButton.style.display = 'block';
                 signInButton.style.display = 'none';
                 console.log('Authentication successful.');
             } else {
-                // User is not authenticated, hide the control button and show a sign-in button
                 toggleButton.style.display = 'none';
                 signInButton.style.display = 'block';
                 console.log('Authentication failed.');
@@ -83,33 +80,62 @@
                     'clientId': CLIENT_ID,
                     'scope': 'https://www.googleapis.com/auth/cloud-platform https://www.googleapis.com/auth/homegraph'
                 }).then(() => {
-                    // Listen for sign-in state changes.
                     gapi.auth2.getAuthInstance().isSignedIn.listen(handleAuthResult);
-                    // Handle the initial sign-in state.
                     handleAuthResult(gapi.auth2.getAuthInstance().isSignedIn.get());
                 });
             });
         }
 
-        // Listen for clicks on our toggle button.
+        function toggleLight() {
+            const accessToken = gapi.auth2.getAuthInstance().currentUser.get().getAuthResponse().access_token;
+            const command = 'action.devices.commands.OnOff';
+            const params = {
+                'on': !isLightOn
+            };
+
+            const requestBody = {
+                'requestId': 'request-' + new Date().getTime(),
+                'agentUserId': 'your-user-id',
+                'inputs': [{
+                    'intent': 'action.devices.EXECUTE',
+                    'payload': {
+                        'commands': [{
+                            'devices': [{'id': '038'}],
+                            'execution': [{
+                                'command': command,
+                                'params': params
+                            }]
+                        }]
+                    }
+                }]
+            };
+
+            gapi.client.homegraph.devices.execute(requestBody).then(response => {
+                if (response.status === 200) {
+                    console.log("Command sent successfully.");
+                    if (isLightOn) {
+                        toggleButton.textContent = 'Turn On';
+                        isLightOn = false;
+                        console.log("Light is now OFF.");
+                    } else {
+                        toggleButton.textContent = 'Turn Off';
+                        isLightOn = true;
+                        console.log("Light is now ON.");
+                    }
+                } else {
+                    console.error("API error:", response.result.error);
+                }
+            });
+        }
+
         toggleButton.addEventListener('click', () => {
-            if (isLightOn) {
-                toggleButton.textContent = 'Turn On';
-                isLightOn = false;
-                console.log("Light is now OFF.");
-            } else {
-                toggleButton.textContent = 'Turn Off';
-                isLightOn = true;
-                console.log("Light is now ON.");
-            }
+            toggleLight();
         });
 
-        // Listen for clicks on the sign-in button.
         signInButton.addEventListener('click', () => {
             gapi.auth2.getAuthInstance().signIn();
         });
 
-        // Load the Google API client library when the window loads.
         window.onload = handleClientLoad;
     </script>
 </body>
